@@ -5,7 +5,7 @@ Thank you for your interest in contributing to this project! We welcome contribu
 ## How to Contribute
 
 1.  **Fork the repository:** Click the "Fork" button at the top right of the repository page. This will create a copy of the repository in your GitHub account.
-2.  **Clone your fork:** Clone your forked repository to your local machine using `git clone https://github.com/cavrilionis/noteguessr.git`.
+2.  **Clone your fork:** Clone your forked repository to your local machine using `git clone https://github.com/cavrilionis/lu-gas-analysis.git`.
 3.  **Create a branch:** Create a new branch for your contribution using `git checkout -b feature/your-feature-name` or `git checkout -b fix/your-fix-name`. Choose a descriptive branch name.
 4.  **Make your changes:** Make your changes to the codebase.
 5.  **Commit your changes:** Commit your changes with clear and concise commit messages using `git commit -m "Add your commit message here"`. Follow our [commit message guidelines](#commit-message-guidelines).
