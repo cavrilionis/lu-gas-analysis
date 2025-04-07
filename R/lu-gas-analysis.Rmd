@@ -1,0 +1,96 @@
+---
+title: "Analysis of gas consumption data in Luxembourg"
+author: "Christos Avrilionis"
+date: "2025-04-07"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+```
+
+This document presents the analysis of gas consumption data in Luxembourg.
+
+## Data source
+
+The data are produced by the *Institut Luxembourgeois de Régulation (ILR)*.  
+For more details see <https://data.public.lu/en/datasets/donnees-statistiques-du-secteur-de-gaz-naturel-ilr/>.
+
+## Import data
+
+Before continuing, please download the data from the above-mentioned URL and save the data on your computer. The 
+downloaded file is an Excel file named `tableau-de-bord-gaz-version-04.-decembre-2024.xlsx`. In the code below,
+I have saved the file in a folder named `data`, but you can use a different location on your computer.
+
+```{r}
+df_raw <- read_xlsx(
+  "./../data/tableau-de-bord-gaz-version-04.-decembre-2024.xlsx",
+  sheet = "1. Consommation",
+  range = "A17:M49",
+  col_names = TRUE,
+  col_types = NULL,
+  na = "",
+  trim_ws = TRUE,
+  skip = 0,
+  guess_max = min(1000, Inf),
+  progress = readxl_progress(),
+  .name_repair = "unique"
+)
+```
+
+``` {r}
+knitr::kable(head(df_raw, n = 8))
+```
+
+
+
+```{r}
+names(df_raw) <- c(
+  "row_type", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",
+  "Aug", "Sep", "Oct", "Nov", "Dec"
+)
+
+print(df_raw)
+```
+
+```{r}
+str(df_raw)
+```
+
+```{r}
+# df <- pivot_longer(df_raw,
+#                    cols = Jan:Dec,
+#                    cols_vary = "slowest",
+#                    names_to = "mon",
+#                    values_to = "consumption_kwh")
+#
+# df <- df |>
+#   mutate(year = ifelse(grepl("^\\d{4}$", row_type), row_type, NA)) |>
+#   fill(year, .direction = "down") |>
+#   filter(row_type == "Clients résidentiels") |>
+#   mutate(month = yearmonth(paste(year, mon, sep = "-"))) |>
+#   select(month, consumption_kwh) |>
+#   relocate(month, .before = everything()) |>
+#   arrange(month) |>
+#   mutate(consumption_gwh = consumption_kwh / 1e+6) |>
+#   select(-consumption_kwh) |>
+#   filter(!is.na(consumption_gwh)) |>
+#   as_tsibble(index = month)
+#
+#
+# head(df)
+#
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+<!-- ```{r pressure, echo=FALSE} -->
+<!-- plot(pressure) -->
+<!-- ``` -->
+
+## References
+
+Hyndman, R.J., & Athanasopoulos, G. (2021) *Forecasting: principles and practice*, 3rd edition, OTexts: Melbourne, Australia. OTexts.com/fpp3. Accessed on 2025-04-07.
