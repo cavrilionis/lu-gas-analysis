@@ -24,6 +24,7 @@ suppressPackageStartupMessages(library(fabletools))
 suppressPackageStartupMessages(library(feasts))
 library(ggrepel)
 library(latex2exp)
+library(kableExtra)
 ```
 
 ![](./../www/thermostat.jpg){class="center-image"}
@@ -92,17 +93,29 @@ Next, to understand the patterns in the data, we perform an exploratory data ana
 
 ### Desriptive statistics
 
-The following descriptive statistics are computed for the monthly temperature in Celcius:
+The following descriptive statistics are computed for the monthly temperature in Celcius.
 
-* Minimum
-* First quantile
-* Median
-* Mean
-* Third quantile
-* Maximum
+```{r stats_temp_celcius, echo = FALSE}
+temp_celcius_stats <- df |>
+  as_tibble() |>
+  summarise(
+    n = n(),
+    min = min(temp_celcius),
+    q1 = quantile(temp_celcius, 0.25),
+    mean = mean(temp_celcius),
+    median = median(temp_celcius),
+    q3 = quantile(temp_celcius, 0.75),
+    max = max(temp_celcius)
+  ) |>
+  pivot_longer(everything(),
+    names_to = "Statistic",
+    values_to = "Value"
+  ) |>
+  mutate(Value = round(Value, 1))
 
-```{r stats_temp_celcius}
-summary(df$temp_celcius)
+kbl(temp_celcius_stats) |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE,
+                position = "center")
 ```
 
 For the residential gas consumption in GWh, we compute a more comprehensive list of statistics.
@@ -130,9 +143,13 @@ consumption_gwh_stats <- df |>
   pivot_longer(everything(),
     names_to = "Statistic",
     values_to = "Value"
-  )
+  ) |>
+  mutate(Value = round(Value, 3))
 
-consumption_gwh_stats
+
+kbl(consumption_gwh_stats) |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE,
+                position = "center")
 ```
 
 We observe that:
@@ -393,11 +410,8 @@ For this data, the correlation coefficient is `r round(cor(df$consumption_gwh, d
 As shown below, the correlation test indicates that the correlation coefficient is significantly different than zero.
 
 ```{r correlation_test}
-cor.test(df$consumption_gwh, df$temp_celcius,
-  method = "pearson",
-  alternative = "two.sided",
-  conf.level = 0.95
-)
+cor.test(df$consumption_gwh, df$temp_celcius, method = "pearson",
+         alternative = "two.sided", conf.level = 0.95)
 ```
 
 ### Lag plots
@@ -515,7 +529,7 @@ feat_stl |>
     box.padding = 0.5,
     point.padding = 0.3,
     force = 1,
-    max.overlaps = 5
+    max.overlaps = 10
   ) +
   theme_minimal() +
   ylim(0, 1) +
