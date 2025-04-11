@@ -5,6 +5,7 @@
 ![GitHub repo size](https://img.shields.io/github/repo-size/cavrilionis/lu-gas-analysis?logo=GitHub)
 [![RPubs Published](https://img.shields.io/badge/RPubs-Published-blue)](https://rpubs.com/avrilionis/lu-gas-analysis)
 ![R Version](https://img.shields.io/badge/R-4.2.3-blue?logo=R)
+![Lint Status](https://img.shields.io/badge/lint-passing-brightgreen)
 
 This repository contains the code for the analysis of gas consumption data for Luxembourg.
 
