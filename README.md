@@ -11,7 +11,7 @@ This repository contains the code for the analysis of gas consumption data for L
 
 The code is available [here](./R/).
 
-The report is available [here](https://rpubs.com/avrilionis/lu-gas-analysis)
+The report is available [here](https://rpubs.com/avrilionis/lu-gas-analysis){target="_blank"}.
 
 ## Contributing
 
