@@ -1,0 +1,81 @@
+name: Lint R Code
+
+on:
+  push:
+    branches: [ main ] # Or your main branch name
+  pull_request:
+    branches: [ main ] # Or your main branch name
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+
+      - name: Install lintr
+        run: install.packages("lintr")
+
+      - name: Lint R code
+        run: |
+          library(lintr)
+          all_files <- list.files(path = ".", pattern = "\\.R$|\\.Rmd", recursive = TRUE, full.names = TRUE)
+          lints <- lapply(all_files, lint_file)
+          num_issues <- sum(vapply(lints, length, integer(1)))
+
+          if (num_issues == 0) {
+            echo "LINT_STATUS=passing" >> $GITHUB_ENV
+          } else {
+            echo "LINT_STATUS=failing" >> $GITHUB_ENV
+            echo "LINT_ISSUES=$num_issues" >> $GITHUB_ENV
+          }
+
+      - name: Update Linting Status (if changed)
+        uses: actions/github-script@v6
+        env:
+          LINT_STATUS: ${{ env.LINT_STATUS }}
+          LINT_ISSUES: ${{ env.LINT_ISSUES }}
+        with:
+          script: |
+            const fs = require('fs').promises;
+            const path = require('path');
+            const statusFile = path.join('.', 'linting_status.json');
+            let existingStatus = {};
+            try {
+              const content = await fs.readFile(statusFile, 'utf8');
+              existingStatus = JSON.parse(content);
+            } catch (error) {
+              // File might not exist yet, ignore
+            }
+
+            const newStatus = { status: process.env.LINT_STATUS };
+            if (process.env.LINT_ISSUES) {
+              newStatus.issues = parseInt(process.env.LINT_ISSUES);
+            }
+
+            if (JSON.stringify(newStatus) !== JSON.stringify(existingStatus)) {
+              await fs.writeFile(statusFile, JSON.stringify(newStatus) + '\n');
+
+              const commitMessage = `Update linting status: ${process.env.LINT_STATUS}${process.env.LINT_ISSUES ? ` (${process.env.LINT_ISSUES} issues)` : ''}`;
+              await github.rest.git.createCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tree: (await github.rest.git.getCommit({ commit_sha: context.sha, owner: context.repo.owner, repo: context.repo.repo })).data.tree.sha,
+                parents: [context.sha],
+                message: commitMessage
+              });
+
+              const ref = `refs/heads/${context.ref.split('/').pop()}`; // Get current branch
+              await github.rest.git.updateRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: ref,
+                sha: (await github.rest.git.getCommit({ commit_sha: (await github.rest.git.getRef({ owner: context.repo.owner, repo: context.repo.repo, ref: ref })).data.object.sha, owner: context.repo.owner, repo: context.repo.repo })).data.sha,
+                force: true
+              });
+            }
