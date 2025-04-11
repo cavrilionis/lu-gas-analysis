@@ -20,7 +20,7 @@ jobs:
 
       - name: Lint R code
         run: |
-          Rscript -e 'install.packages("lintr");' -e 'library("lintr");' -e 'all_files <- list.files(path = ".", pattern = "\\\\.R$|\\\\.Rmd$", recursive = TRUE, full.names = TRUE);' -e 'lints <- lapply(all_files, lint_file);' -e 'num_issues <- sum(vapply(lints, length, integer(1)));' -e 'if (num_issues == 0) { cat("LINT_STATUS=passing\\n") } else { cat("LINT_STATUS=failing\\n"); cat("LINT_ISSUES=", num_issues, "\\n") }' >> $GITHUB_ENV
+          Rscript -e 'install.packages("lintr");' -e 'library("lintr");' -e 'all_files <- list.files(path = ".", pattern = "\\\\.R$|\\\\.Rmd$", recursive = TRUE, full.names = TRUE);' -e 'lints <- lapply(all_files, lint);' -e 'num_issues <- sum(vapply(lints, length, integer(1)));' -e 'if (num_issues == 0) { cat("LINT_STATUS=passing\\n") } else { cat("LINT_STATUS=failing\\n"); cat("LINT_ISSUES=", num_issues, "\\n") }' >> $GITHUB_ENV
 
       - name: Update Linting Status (if changed)
         uses: actions/github-script@v6
