@@ -18,11 +18,9 @@ jobs:
         with:
           r-version: 'release'
 
-      - name: Install lintr
-        run: install.packages("lintr")
-
       - name: Lint R code
         run: |
+          install.packages("lintr")
           library(lintr)
           all_files <- list.files(path = ".", pattern = "\\.R$|\\.Rmd", recursive = TRUE, full.names = TRUE)
           lints <- lapply(all_files, lint_file)
