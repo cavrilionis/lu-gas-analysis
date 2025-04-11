@@ -5,9 +5,9 @@
 download_file <- function(url) {
   # Extract file name from URL
   parsed_url <- urltools::url_parse(url)
-  filename <- urltools::basename(parsed_url$path)
+  filename <- base::basename(parsed_url$path)
 
-  if (utils::file.exists(paste0("./../data/", filename))) {
+  if (base::file.exists(paste0("./../data/", filename))) {
     cli::cli_alert_info("{filename} is already downloaded.")
   } else {
     # Download the file
