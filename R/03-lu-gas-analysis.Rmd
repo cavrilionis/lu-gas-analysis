@@ -6,12 +6,16 @@ output:
   html_document: 
     anchor_sections: false
     toc: true
-    toc_float: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
     code_download: true
     code_folding: none
     css: style.css
     number_sections: true
     fig_width: 9
+    fig_caption: false
+    df_print: paged
 ---
 
 ```{r setup, include = FALSE}
@@ -35,7 +39,7 @@ This document presents the analysis of residential gas consumption data in Luxem
 
 The analysis hereafter is based on two data sources with the following characteristics.
 
-| Data source                                          | Producer                                    | URL                                                                                                                                                                               | Format |
+| Data source                                       | Producer                                    | URL                                                                                                                                                                               | Format |
 |---------------------------------------------------|---------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------|
 | Monthly residential gas consumption in Luxembourg | Institut Luxembourgeois de Régulation (ILR) | https://data.public.lu/en/datasets/donnees-statistiques-du-secteur-de-gaz-naturel-ilr/                                                                                            | .xlsx  |
 | Monthly mean air temperature in Luxembourg        | MeteoLux                                    | https://data.public.lu/en/datasets/inspire-annex-iii-meteorological-geographical-features-pointtimeseriesobservation-monthly-weather-measurements-at-luxembourg-findel-airport-1/ | .gml   |
