@@ -1,7 +1,7 @@
 ---
 title: "Analysis of residential gas consumption data in Luxembourg"
 author: "Christos Avrilionis"
-date: "2025-04-07"
+date: "2025-11-24"
 output:
   html_document: 
     anchor_sections: false
@@ -16,38 +16,66 @@ output:
     fig_width: 9
     fig_caption: false
     df_print: paged
+bibliography: references.bib
+csl: apa.csl
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(tidyverse)
-library(gridExtra)
-library(moments)
-suppressPackageStartupMessages(library(fable))
-suppressPackageStartupMessages(library(fabletools))
-suppressPackageStartupMessages(library(feasts))
-library(ggrepel)
-library(latex2exp)
-library(kableExtra)
+
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(gridExtra)
+  library(moments)
+  library(fable)
+  library(fabletools)
+  library(feasts)
+  library(ggrepel)
+  library(latex2exp)
+  library(kableExtra)
+})
 ```
 
-![](./../www/thermostat.jpg){class="center-image"}
+![](./../www/thermostat.jpg){.center-image}
 
-This document presents the analysis of residential gas consumption data in Luxembourg.
+**List of abbreviations**
+
+```{r abbreviations, echo=FALSE}
+
+abbr <- read_delim("./../data/abbreviations.csv",
+                   delim = "|",
+                   col_names = TRUE,
+                   show_col_types = FALSE) |>
+  arrange(Abbreviation)
+
+kbl(abbr) |>
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
+```
+
+## Introduction
+
+This document presents the analysis of residential gas consumption data
+in Luxembourg.
 
 ## Data sources
 
-The analysis hereafter is based on two data sources with the following characteristics.
+The analysis hereafter is based on two data sources with the following
+characteristics.
 
-| Data source                                       | Producer                                    | URL                                                                                                                                                                               | Format |
-|---------------------------------------------------|---------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------|
-| Monthly residential gas consumption in Luxembourg | Institut Luxembourgeois de Régulation (ILR) | https://data.public.lu/en/datasets/donnees-statistiques-du-secteur-de-gaz-naturel-ilr/                                                                                            | .xlsx  |
-| Monthly mean air temperature in Luxembourg        | MeteoLux                                    | https://data.public.lu/en/datasets/inspire-annex-iii-meteorological-geographical-features-pointtimeseriesobservation-monthly-weather-measurements-at-luxembourg-findel-airport-1/ | .gml   |
+| Data source | Producer | URL | Format |
+|------------|------------|-------------------------------------|------------|
+| Monthly residential gas consumption in Luxembourg | *Institut Luxembourgeois de Régulation (ILR)* | <https://data.public.lu/en/datasets/donnees-statistiques-du-secteur-de-gaz-naturel-ilr/> | .xlsx |
+| Monthly mean air temperature in Luxembourg | MeteoLux | <https://data.public.lu/en/datasets/inspire-annex-iii-meteorological-geographical-features-pointtimeseriesobservation-monthly-weather-measurements-at-luxembourg-findel-airport-1/> | .gml |
 
-For conciseness, the details of data download, import and tidying are not discussed here.
-If you are interested, you can use the R code from 
-[GitHub](https://github.com/cavrilionis/lu-gas-analysis/blob/main/R) 
-to download, import, and tidy the data.
+For conciseness, the details of data download, import and tidying are
+not discussed here. If you are interested, you can use the R code from
+[GitHub](https://github.com/cavrilionis/lu-gas-analysis/blob/main/R) to
+download, import, and tidy the data.
 
 ```{r download_data, include = FALSE}
 source("01-download_data.R")
@@ -59,27 +87,32 @@ source("02-import-data.R")
 
 ## Data description
 
-For our analysis, we are only interested in the monthly residential gas consumption in GWh. 
-Note that the raw data has two other types of gas consumption (industrial consumption and production/co-generation).
+For our analysis, we are only interested in the monthly residential gas
+consumption in GWh. Note that the raw data has two other types of gas
+consumption (industrial consumption and production/co-generation).
 
-We use `tsibble` objects as they are specifically designed for time series analysis.
-A `tsibble` is a special kind of `tibble`.
+We use `tsibble` objects as they are specifically designed for time
+series analysis. A `tsibble` is a special kind of `tibble`.
 
-After downloading, importing, and tidying the data, this is the resulting tsibble, named `df`:
+After downloading, importing, and tidying the data, the resulting
+`tsibble`, named `df` is shown below.
 
-``` {r print_df, echo = FALSE}
+```{r print_df, echo = FALSE}
 df
 ```
 
 We observe that:
 
-* There are `r nrow(df)` rows and `r ncol(df)` columns
-* The interval (time step) is 1 month (`month` column)
-* There are two time series:
-    + Monthly residential gas consumption in GWh (`consumption_gwh` column)
-    + Monthly average temperature in degrees Celcius (`temp_celcius` column)
+-   There are `r nrow(df)` rows and `r ncol(df)` columns
+-   The interval (time step) is 1 month (`month` column)
+-   There are two time series:
+    -   Monthly residential gas consumption in GWh (`consumption_gwh`
+        column)
+    -   Monthly average temperature in degrees Celcius (`temp_celcius`
+        column)
 
-Although the first 10 rows are displayed, the `month` column contains `r length(unique(year(df$month)))` years.
+Although the first 10 rows are displayed, the `month` column contains
+`r length(unique(year(df$month)))` years.
 
 ```{r unique_months}
 unique(year(df$month))
@@ -87,17 +120,19 @@ unique(year(df$month))
 
 Furthermore, we observe that the time series:
 
-* starts at `r format(min(df$month), "%b-%Y")`
-* ends at `r format(max(df$month), "%b-%Y")`
-* has `r nrow(count_gaps(df))` gaps
+-   starts at `r format(min(df$month), "%b-%Y")`
+-   ends at `r format(max(df$month), "%b-%Y")`
+-   has `r nrow(count_gaps(df))` gaps
 
-Next, to understand the patterns in the data, we perform an exploratory data analysis.
+Next, we perform an exploratory data analysis to understand the patterns
+in the data.
 
 ## Exploratory data analysis
 
 ### Desriptive statistics
 
-The following descriptive statistics are computed for the monthly temperature in Celcius.
+The following descriptive statistics are computed for the monthly
+temperature in Celcius.
 
 ```{r stats_temp_celcius, echo = FALSE}
 temp_celcius_stats <- df |>
@@ -118,11 +153,13 @@ temp_celcius_stats <- df |>
   mutate(Value = round(Value, 1))
 
 kbl(temp_celcius_stats) |>
-  kable_styling(bootstrap_options = "striped", full_width = FALSE,
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
                 position = "center")
 ```
 
-For the residential gas consumption in GWh, we compute a more comprehensive list of statistics.
+For the residential gas consumption in GWh, we compute a more
+comprehensive list of statistics.
 
 ```{r stats_consumption_gwh}
 consumption_gwh_stats <- df |>
@@ -148,19 +185,23 @@ consumption_gwh_stats <- df |>
     names_to = "Statistic",
     values_to = "Value"
   ) |>
-  mutate(Value = round(Value, 3))
+  mutate(Value = round(Value, 2))
 
 
 kbl(consumption_gwh_stats) |>
-  kable_styling(bootstrap_options = "striped", full_width = FALSE,
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
                 position = "center")
 ```
 
 We observe that:
 
-* The total residential gas consumption between `r format(min(df$month), "%b-%Y")`
-and `r format(max(df$month), "%b-%Y")` was `r consumption_gwh_stats |> filter(Statistic == "sum") |> pull(Value) |> format(big.mark = ",", scientific = FALSE)` GWh.
-* The average monthly residential gas consumption is `r consumption_gwh_stats |> filter(Statistic == "mean") |> pull(Value) |> round(2)` GWh.
+-   The total residential gas consumption was
+    `r consumption_gwh_stats |> filter(Statistic == "sum") |> pull(Value) |> format(big.mark = ",", scientific = FALSE)`
+    GWh.
+-   The average monthly residential gas consumption is
+    `r consumption_gwh_stats |> filter(Statistic == "mean") |> pull(Value) |> round(2)`
+    GWh.
 
 ### Histograms
 
@@ -224,15 +265,17 @@ p2 <- ggplot(df, aes(x = temp_celcius)) +
 grid.arrange(p1, p2, ncol = 2)
 ```
 
-We observe that both distributions are bimodal. The temperature distribution has a more pronounced bimodal feature.
+We observe that both distributions are bimodal. The temperature
+distribution has a more pronounced bimodal feature.
 
 ### Boxplots
 
-One simple yet effective method to detect outliers graphically is the boxplot. These are the boxplots for our two variables.
+One simple yet effective method to detect outliers graphically is the
+boxplot. These are the boxplots for our two variables.
 
 ```{r boxplots, echo = FALSE, fig.height=2}
 p1 <- ggplot(df, aes(x = consumption_gwh)) +
-  geom_boxplot() +
+  geom_boxplot(outliers = TRUE) +
   theme_minimal() +
   theme(
     axis.title.y = element_blank(),
@@ -244,7 +287,7 @@ p1 <- ggplot(df, aes(x = consumption_gwh)) +
   labs(x = "Monthly gas consumption in GWh", title = NULL)
 
 p2 <- ggplot(df, aes(x = temp_celcius)) +
-  geom_boxplot() +
+  geom_boxplot(outliers = TRUE) +
   theme_minimal() +
   theme(
     axis.title.y = element_blank(),
@@ -258,11 +301,21 @@ p2 <- ggplot(df, aes(x = temp_celcius)) +
 grid.arrange(p1, p2, ncol = 2)
 ```
 
-Both distributions do not contain any outliers.
+The lower and upper hinges correspond to the first and third quartiles
+(the 25th and 75th percentiles). The line between the hinges corresponds
+to the median. The upper whisker extends from the hinge to the largest
+value no further than 1.5 \* IQR from the hinge. IQR is the distance
+between the first and third quartiles. The lower whisker extends from
+the hinge to the smallest value at most 1.5 \* IQR of the hinge. Data
+beyond the end of the whiskers are called "outliers" and are plotted
+individually.
+
+We observe that both distributions do not contain any outliers.
 
 ### Time plots
 
-Perhaps the most useful data visualization when it comes to time series is the time plot. Here is the time plot for our data.
+Perhaps the most useful data visualization when it comes to time series
+is the time plot. Here is the time plot for our data.
 
 ```{r time_plots, echo = FALSE, fig.height = 7}
 p1 <- df |>
@@ -287,27 +340,35 @@ p2 <- df |>
 grid.arrange(p1, p2, nrow = 2, ncol = 1)
 ```
 
-The time plot of the gas consumption (upper plot) immediately reveals some interesting features.
+The time plot of the gas consumption (upper plot) immediately reveals
+some interesting features.
 
-* Peaks happen in the winter.
-* Low points happen in the summer.
-* There is a decreasing trend.
-* The seasonal pattern increases in size as the level of the series increases. This causes the variance to increase over time and it is also known as [heteroskedasticity](https://en.wikipedia.org/wiki/Homoscedasticity_and_heteroscedasticity).
+-   Peaks happen in the winter.
+-   Low points happen in the summer.
+-   There is a decreasing trend.
+-   The seasonal pattern increases in size as the level of the series
+    increases. This causes the variance to increase over time and it is
+    also known as
+    [heteroskedasticity](https://en.wikipedia.org/wiki/Homoscedasticity_and_heteroscedasticity).
 
-The spikes during the winter months are probably caused due to household gas heating. Similarly, the low points in the summer could be due to the reduced need for household gas heating.
+The spikes during the winter months are probably caused due to household
+gas heating. Similarly, the low points in the summer could be due to the
+reduced need for household gas heating.
 
-The time plot of the mean monthly temperature (lower plot) exhibits the opposite pattern.
+The time plot of the mean monthly temperature (lower plot) exhibits the
+opposite pattern.
 
-* Peaks happen in the summer
-* Low points happen in the winter.
-* There is a flat trend.
-* The data appears to be homoskedastic.  
+-   Peaks happen in the summer
+-   Low points happen in the winter.
+-   There is a flat trend.
+-   The data appears to be homoskedastic.
 
-**Both time series have a strong seasonal pattern.**
+Both time series have a strong seasonal pattern.
 
 ### Seasonal plots
 
-A seasonal plot is similar to a time plot except that the data are plotted against the individual month in which the data were observed.
+A seasonal plot is similar to a time plot except that the data are
+plotted against the individual month in which the data were observed.
 
 ```{r seasonal_plot_consumption, echo = FALSE}
 df |>
@@ -323,14 +384,19 @@ df |>
 
 In addition to the observations made by the time plot, we observe that:
 
-* February and March 2018 have a higher gas consumption than the same months in other years. 
-* February 2024 has a lower gas consumption than the same month in other years. 
-* There are two "clusters" of curves. The first cluster has 2017 to 2021 curves and the 
-second cluster has 2022 to 2024 curves. The curves of the second cluster are below than
-the curves of the first cluster, from April to November. This could be explained by the 
-higher-than-usual residential gas prices observed from 2022 until 2024.
+-   February and March 2018 have a higher gas consumption than the same
+    months in other years.
+-   February 2024 has a lower gas consumption than the same month in
+    other years.
+-   There are two "clusters" of curves. The first cluster has 2017 to
+    2021 curves and the second cluster has 2022 to 2024 curves. The
+    curves of the second cluster are below than the curves of the first
+    cluster, from April to November. This could be explained by the
+    higher-than-usual residential gas prices observed from 2022 until
+    2024.
 
-The higher-than-usual gas consumption in February and March 2018 is most likely explained by the low mean temperature during these months, as
+The higher-than-usual gas consumption in February and March 2018 is most
+likely explained by the low mean temperature during these months, as
 observed in the graph below.
 
 ```{r seasonal_plot_temperature, echo = FALSE, warning = FALSE}
@@ -346,8 +412,10 @@ df |>
 
 ### Seasonal subseries plot
 
-An alternative plot that emphasizes the seasonal patterns is where the data for each season are collected together in separate mini time plots.
-The blue horizontal lines indicate the means for each month. The x-axis indicates the year. 
+An alternative plot that emphasizes the seasonal patterns is where the
+data for each season are collected together in separate mini time plots.
+The blue horizontal lines indicate the means for each month. The x-axis
+indicates the year.
 
 ```{r seasonal_subseries_plot_consumption, echo = FALSE}
 df |>
@@ -365,7 +433,8 @@ df |>
   )
 ```
 
-We observe that the pattern is similar between months, except from January.
+We observe that the pattern is similar between months, except from
+January.
 
 ```{r seasonal_subseries_plot_temperature, echo = FALSE}
 df |>
@@ -384,13 +453,15 @@ df |>
 
 We do not detect any clear pattern in this seasonal subseries graph.
 
-Up until now, we have observed each time series individually. This is also called a univariate analysis.
-Next, we will look at how these time series behave together. This is also called a multivariate analysis.
+Up until now, we have observed each time series individually. This is
+also called a univariate analysis. Next, we will look at how these time
+series behave together. This is also called a multivariate analysis.
 
 ### Scatterplot
 
-Let us visualize the data points of gas consumption and mean temperature together. The most common plot
-for this task is the scatterplot, as shown below. A linear fit is also plotted.
+Let us visualize the data points of gas consumption and mean temperature
+together. The most common plot for this task is the scatterplot, as
+shown below. A linear fit is also plotted.
 
 ```{r scatterplot, echo = FALSE}
 ggplot(df, aes(x = temp_celcius, y = consumption_gwh)) +
@@ -404,14 +475,20 @@ ggplot(df, aes(x = temp_celcius, y = consumption_gwh)) +
   theme_minimal()
 ```
 
-As expected, we observe a negative correlation between mean temperature and gas consumption. We also observe 
-that the upper left corner (low temperature, high consumption) has data points closer to the linear regression line.
-In contrast, the lower right corner (high temperature, low consumption) has data points scattered away from the linear regression line.
+As expected, we observe a negative correlation between mean temperature
+and gas consumption. We also observe that the upper left corner (low
+temperature, high consumption) has data points closer to the linear
+regression line. In contrast, the lower right corner (high temperature,
+low consumption) has data points scattered away from the linear
+regression line.
 
-The correlation coefficient measures the strength of the **linear** relationship between mean temperature and gas consumption.
-For this data, the correlation coefficient is `r round(cor(df$consumption_gwh, df$temp_celcius), 2)`. 
+The correlation coefficient measures the strength of the **linear**
+relationship between mean temperature and gas consumption. For this
+data, the correlation coefficient is
+`r round(cor(df$consumption_gwh, df$temp_celcius), 2)`.
 
-As shown below, the correlation test indicates that the correlation coefficient is significantly different than zero.
+As shown below, the correlation test indicates that the correlation
+coefficient is significantly different than zero.
 
 ```{r correlation_test}
 cor.test(df$consumption_gwh, df$temp_celcius, method = "pearson",
@@ -420,8 +497,10 @@ cor.test(df$consumption_gwh, df$temp_celcius, method = "pearson",
 
 ### Lag plots
 
-The figure below displays scatterplots where the horizontal axis shows lagged values (k) of the time series. Each graph shows  
-monthly gas consumption data points plotted against themselves at different lags.
+The figure below displays scatterplots where the horizontal axis shows
+lagged values (k) of the time series. Each graph shows\
+monthly gas consumption data points plotted against themselves at
+different lags.
 
 ```{r lag_plot}
 df |>
@@ -434,18 +513,23 @@ df |>
   theme_minimal()
 ```
 
-The colors indicate the month of the variable on the vertical axis. The relationship is strongly positive at lags 1 and 12, 
-reflecting the strong seasonality in the data. The negative relationship seen for lag 6 occurs because peaks of gas consumption (in the winther)
-are plotted against troughs (in the summer).
+The colors indicate the month of the variable on the vertical axis. The
+relationship is strongly positive at lags 1 and 12, reflecting the
+strong seasonality in the data. The negative relationship seen for lag 6
+occurs because peaks of gas consumption (in the winther) are plotted
+against troughs (in the summer).
 
 ### Autocorrelation
 
-Just as correlation measures the extent of a linear relationship between two variables, 
-autocorrelation measures the linear relationship between lagged values of a time series.
+Just as correlation measures the extent of a linear relationship between
+two variables, autocorrelation measures the linear relationship between
+lagged values of a time series.
 
-There are several autocorrelation coefficients, corresponding to each panel in the lag plot above.
+There are several autocorrelation coefficients, corresponding to each
+panel in the lag plot above.
 
-The autocorrelation coefficients make up the *autocorrelation function* or ACF.
+The autocorrelation coefficients make up the *autocorrelation function*
+or ACF.
 
 ```{r acf}
 df |>
@@ -461,11 +545,18 @@ df |>
 
 In this graph:
 
-* The autocorrelation coefficients at lag 1, 12, 24, etc. (denoted $r_1$, $r_{12}$, and $r_{24}$ respectively) are high. This is due to the seasonal pattern in the data: the peaks tend to be 12 months apart and the low points tend to also be 12 months apart.
-* The dashed blue lines indicate whether the correlations are significantly different from zero. If an autocorrelation coefficient lies outside the blue 
-bound, it is significantly different from zero.
+-   The autocorrelation coefficients at lag 1, 12, 24, etc. (denoted
+    $r_1$, $r_{12}$, and $r_{24}$ respectively) are high. This is due to
+    the seasonal pattern in the data: the peaks tend to be 12 months
+    apart and the low points tend to also be 12 months apart.
+-   The dashed blue lines indicate whether the correlations are
+    significantly different from zero. If an autocorrelation coefficient
+    lies outside the blue bound, it is significantly different from
+    zero.
 
 ### Box-Cox transformation
+
+For more details, please refer to [@fpp3].
 
 ```{r box_cox}
 lambda <- df |>
@@ -522,7 +613,19 @@ feat_stl_temp_celcius <- df |>
 
 feat_stl <- rbind(feat_stl_consumption_gwh, feat_stl_temp_celcius)
 
-knitr::kable(t(feat_stl))
+feat_stl_t <- feat_stl |>
+  t() |>
+  as.data.frame() |>
+  rownames_to_column("Feature")
+  
+colnames(feat_stl_t) <- c("Feature", feat_stl_t[1, 2], feat_stl_t[1, 3])
+
+feat_stl_t |>
+  slice(-1) |> 
+  kbl() |> 
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
 ```
 
 ```{r strength_plot, echo = FALSE}
@@ -533,7 +636,7 @@ feat_stl |>
     box.padding = 0.5,
     point.padding = 0.3,
     force = 1,
-    max.overlaps = 10
+    max.overlaps = 15
   ) +
   theme_minimal() +
   ylim(0, 1) +
@@ -542,5 +645,3 @@ feat_stl |>
 ```
 
 ## References
-
-Hyndman, R.J., & Athanasopoulos, G. (2021) *Forecasting: principles and practice*, 3rd edition, OTexts: Melbourne, Australia. https://OTexts.com/fpp3. Accessed on 2025-04-07.
