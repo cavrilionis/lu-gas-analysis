@@ -617,12 +617,12 @@ feat_stl_t <- feat_stl |>
   t() |>
   as.data.frame() |>
   rownames_to_column("Feature")
-  
+
 colnames(feat_stl_t) <- c("Feature", feat_stl_t[1, 2], feat_stl_t[1, 3])
 
 feat_stl_t |>
-  slice(-1) |> 
-  kbl() |> 
+  slice(-1) |>
+  kbl() |>
   kable_styling(bootstrap_options = "striped",
                 full_width = FALSE,
                 position = "center")
