@@ -29,4 +29,4 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Author
 
-[cavrilionis](https://github.com/cavrilionis)
+Christos Avrilionis [(cavrilionis)](https://github.com/cavrilionis)
